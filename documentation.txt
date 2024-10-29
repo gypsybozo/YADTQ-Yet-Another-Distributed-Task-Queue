@@ -1,0 +1,21 @@
+Files
+1. Core has the kafka broker, storage and the definition of a task
+2. API is the client support and worker support part of the YADTQ module we are trying to create.
+3. basic.py acts as the client and workers as of now
+    It samples 2 simple tasks and workers poll the queue to receive tasks and then complete them.
+
+Setting up the environment
+
+1. source the venv 
+2. ensure libraries from the requirements.txt are downloaded
+3. ensure redis-server is installed using brew install redis
+
+Starting kafka and redis
+
+1. Start zookeeper and kafka server
+2. Start redis with redis-server
+    a. for the CLI run redis-cli 
+
+Running the example tasks
+
+1. python basic.py
