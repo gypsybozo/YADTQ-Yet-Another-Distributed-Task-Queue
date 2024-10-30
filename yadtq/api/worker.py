@@ -15,7 +15,7 @@ class TaskWorker:
         self.task_handlers = task_handlers
         self._broker = broker
         self._result_store = result_store
-        self._consumer = self._broker.get_consumer('yadtq_worker_group')  # Using the same group ID for all workers
+        self._consumer = self._broker.get_consumer('yadtq_worker_group')  # same consumer group -> same ID
         self._running = False
         self._heartbeat_thread = None
 

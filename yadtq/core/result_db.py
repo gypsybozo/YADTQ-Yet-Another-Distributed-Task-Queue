@@ -16,7 +16,6 @@ class ResultStore:
         if worker_id is not None:
             mapping['worker_id'] = worker_id
             
-        # Assuming you're using a Redis client to store task statuses
         self.redis_client.hset(task_id, mapping=mapping)
 
     

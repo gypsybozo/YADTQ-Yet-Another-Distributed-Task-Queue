@@ -14,7 +14,7 @@ class TaskClient:
         """Submit a task to the queue"""
         task = Task.create(task_name, *args, **kwargs)
         
-        # Initialize task status
+        # Initialize task status as queued -> req 1 client side
         self._result_store.set_task_status(task.task_id, 'queued')
         
         # Send task to queue

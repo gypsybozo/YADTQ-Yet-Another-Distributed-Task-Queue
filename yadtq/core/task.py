@@ -14,6 +14,7 @@ class Task:
     @classmethod
     def create(cls, task_name, *args, **kwargs):
         return cls(
+            #creates unique ID -> req 1, client side support
             task_id=str(uuid.uuid4()),
             task_name=task_name,
             args=args,
