@@ -9,6 +9,10 @@ def add(a, b):
     time.sleep(2)  # Simulate work
     return a + b
 
+def subtract(a, b):
+    time.sleep(2)  # Simulate work
+    return a - b
+
 def multiply(a, b):
     time.sleep(2)  # Simulate work
     return a * b
@@ -16,13 +20,13 @@ def multiply(a, b):
 # Create task handlers dictionary
 task_handlers = {
     'add': add,
+    'subtract': subtract,  # Add subtract task here
     'multiply': multiply
 }
 
 def run_worker(worker_id, broker, result_store):
     worker = TaskWorker(worker_id, task_handlers, broker, result_store)
     worker.start()
-
 
 def main():
     # Create YADTQ instance
@@ -48,6 +52,7 @@ def main():
     # Submit tasks
     tasks = [
         ('add', (5, 3)),
+        ('subtract', (10, 4)),  # Submit subtract task
         ('multiply', (4, 6))
     ]
 
