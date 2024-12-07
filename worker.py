@@ -1,5 +1,5 @@
 from yadtq import create_yadtq
-from yadtq.api.worker import TaskWorker
+from yadtq.api.worker_module import TaskWorker
 import time
 import threading
 
