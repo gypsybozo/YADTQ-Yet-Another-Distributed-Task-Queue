@@ -1,80 +1,110 @@
+import redis
 from yadtq import create_yadtq
 from yadtq.api.client import TaskClient
-from yadtq.api.worker import TaskWorker
-import threading
 import time
+import uuid
 
-# Define task handlers
-def add(a, b):
-    time.sleep(2)  # Simulate work
-    return a + b
-
-def multiply(a, b):
-    time.sleep(2)  # Simulate work
-    return a * b
-
-# Create task handlers dictionary
-task_handlers = {
-    'add': add,
-    'multiply': multiply
-}
-
-def run_worker(worker_id, broker, result_store):
-    worker = TaskWorker(worker_id, task_handlers, broker, result_store)
-    worker.start()
-
+def check_task_status_periodically(task_ids, client, results, worker_task_counts):
+    """
+    Periodically checks the status of tasks and prints the results.
+    """
+    while task_ids:
+        for task_id in task_ids[:]:
+            result = client.get_result(task_id)
+            if result:
+                status = result.get('status', 'unknown')
+                print(f"Task ID: {task_id} | Status: {status}")
+                
+                # If the task is completed, remove it from the list and store the result
+                if status in ['success', 'failed']:
+                    task_ids.remove(task_id)
+                    results[task_id] = result
+                    worker_id = result.get('worker_id')
+                    if worker_id:
+                        worker_task_counts[worker_id] = worker_task_counts.get(worker_id, 0) + 1
+                    
+                # Optionally, print the result of the task
+                if status == 'success':
+                    print(f"Result: {result.get('result', 'No result available')}")
+                elif status == 'failed':
+                    print(f"Error: {result.get('result', 'No error message available')}")
+                
+        # Sleep for a short duration before checking again
+        time.sleep(5)
 
 def main():
-    # Create YADTQ instance
     broker, result_store = create_yadtq()
-    
-    # Start workers before submitting tasks
-    worker_threads = []
-    for i in range(3):
-        thread = threading.Thread(
-            target=run_worker,
-            args=(f"worker_{i}", broker, result_store)
-        )
-        thread.daemon = True
-        thread.start()
-        worker_threads.append(thread)
-    
-    # Wait a few seconds to allow workers to join the consumer group
-    time.sleep(5)  
-    
-    # Create client
     client = TaskClient(broker, result_store)
 
-    # Submit tasks
+    # Define tasks with intentional duplicates
     tasks = [
-        ('add', (5, 3)),
-        ('multiply', (4, 6))
+        ('add', (12, 3)),
+        ('add', (12, 3)),  # Duplicate
+        ('subtract', (101, 4)),
+        ('divide', (42, 6)),
+        ('divide', (42, 6)),  # Duplicate
+        ('add', (50, 25)),
+        ('subtract', (200, 50)),
+        ('add', (30, 20)),
+        ('divide', (50, 10)),
+        ('subtract', (80, 30)),
+        ('add', (100, 200)),
+        ('divide', (15, 0))
     ]
 
-    task_ids = []  
-
-    # Submit tasks and store their IDs
-    for task_name, args in tasks:
-        task_id = client.submit(task_name, *args)
-        task_ids.append(task_id)
-        print(f"Submitted {task_name}{args} with ID: {task_id}")
-    
-    # Wait for results
+    task_ids = []
+    task_id_mapping = {}
+    submission_times = {}
+    worker_task_counts = {}
     results = {}
-    while task_ids:
-        for task_id in task_ids[:]:  
-            try:
-                result = client.wait_for_result(task_id)  
-                if result is not None:  # If the result is available
-                    print(f"Task {task_id} completed: {result}")
-                    results[task_id] = result
-                    task_ids.remove(task_id)  # Remove the task ID from list
-            except Exception as e:
-                print(f"Error checking task {task_id}: {e}")
-        
-        time.sleep(1)  
 
-    print("All tasks completed.")
+    print("\n📋 Task Submission Phase:")
+    print("------------------------")
+
+    for task_name, args in tasks:
+        task_signature = f"{task_name}:{args}"
+       
+        if task_signature in task_id_mapping:
+            print(f"\n🔄 Duplicate task detected: {task_signature}")
+            task_id = task_id_mapping[task_signature]
+            print(f"↪️ Reusing existing task ID: {task_id}")
+           
+            # Check if result already exists
+            existing_result = client.get_result(task_id)
+            if existing_result and existing_result['status'] == 'success':
+                print(f"📝 Found cached result: {existing_result['result']}")
+                continue
+        else:
+            task_id = client.submit(task_name, *args)
+            task_id_mapping[task_signature] = task_id
+            submission_times[task_id] = time.time()
+           
+            print(f"\n📤 Queued new task: {task_signature}")
+            print(f"📎 Task ID: {task_id}")
+            task_ids.append(task_id)
+           
+            # Small delay between submissions to help with distribution
+            time.sleep(0.1)
+
+    print("\n⚙️ Task Execution Phase:")
+    print("------------------------")
+
+    # Periodically check task statuses and print results
+    check_task_status_periodically(task_ids, client, results, worker_task_counts)
+
+    print("\n📊 Task Distribution Summary:")
+    print("---------------------------")
+    for worker_id, count in worker_task_counts.items():
+        print(f"Worker {worker_id}: {count} tasks")
+
+    print("\n📈 Final Results Summary:")
+    print("----------------------")
+    for task_id, result in results.items():
+        print(f"\nTask ID: {task_id}")
+        print(f"Status: {result['status']}")
+        print(f"Worker: {result.get('worker_id', 'N/A')}")
+        print(f"Result: {result.get('result', 'N/A')}")
+        print(f"Timestamp: {result.get('timestamp', 'N/A')}")
 
 if __name__ == "__main__":
     main()
