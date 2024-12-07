@@ -17,7 +17,7 @@ A distributed task queue implementation using Kafka as the message broker, featu
 
 ## Installation
 ```bash
-pip install yadtq
+pip -r requirements.txt
 ```
 
 ## Quick Start
