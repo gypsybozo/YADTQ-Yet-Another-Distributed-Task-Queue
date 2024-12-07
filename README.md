@@ -53,7 +53,7 @@ python basic.py
 - Multiple partition support
 - Load balancing across workers
 
-  ## Task Lifecycle
+## Task Lifecycle
 - Client submits task
 - Task is queued with 'queued' status
 - Worker claims task and sets status to 'processing'
