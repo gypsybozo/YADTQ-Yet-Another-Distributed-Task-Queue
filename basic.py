@@ -1,6 +1,6 @@
 import redis
 from yadtq import create_yadtq
-from yadtq.api.client import TaskClient
+from yadtq.api.client_module import TaskClient
 import time
 import uuid
 
