@@ -17,7 +17,7 @@ A distributed task queue implementation using Kafka as the message broker, featu
 
 ## Installation
 ```bash
-pip -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Quick Start
