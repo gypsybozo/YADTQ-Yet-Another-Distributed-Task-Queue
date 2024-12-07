@@ -1,3 +1,5 @@
+# yadtq/api/worker.py
+
 import threading
 from typing import Dict, Callable
 import time
@@ -15,7 +17,7 @@ class TaskWorker:
         self.task_handlers = task_handlers
         self._broker = broker
         self._result_store = result_store
-        self._consumer = self._broker.get_consumer('yadtq_worker_group')  # same consumer group -> same ID
+        self._consumer = self._broker.get_consumer('yadtq_worker_group')
         self._running = False
         self._heartbeat_thread = None
 
@@ -27,12 +29,24 @@ class TaskWorker:
             time.sleep(10)
 
     def _process_task(self, task_data):
-        """Internal method to process a single task"""
+        """Internal method to process a single task with deduplication"""
         task_id = task_data['task_id']
-        logger.info(f"{self.worker_id} received task {task_id}: {task_data['task_name']} with args {task_data['args']}")
-        self._result_store.set_task_status(
+        
+        # Check if task is already completed
+        if self._result_store.is_task_completed(task_id):
+            logger.info(f"{self.worker_id}: Task {task_id} already completed, skipping")
+            return
+            
+        # Try to claim the task
+        success = self._result_store.set_task_status(
             task_id, 'processing', worker_id=self.worker_id
         )
+        
+        if not success:
+            logger.info(f"{self.worker_id}: Task {task_id} already being processed by another worker")
+            return
+            
+        logger.info(f"{self.worker_id} processing task {task_id}: {task_data['task_name']}")
         
         try:
             handler = self.task_handlers[task_data['task_name']]
@@ -64,10 +78,12 @@ class TaskWorker:
                     logger.info(f"{self.worker_id} found no new messages.")
                 
                 for topic_partition, batch in messages.items():
+                    
+                    logger.info(f"{self.worker_id} assigned to partition {topic_partition.partition}")
                     for message in batch:
                         task_data = message.value
-                        self._process_task(task_data)  # Assuming task_data is a dictionary
-                        self._consumer.commit()  # Commit after processing the task
+                        self._process_task(task_data)
+                        self._consumer.commit()
         finally:
             self._running = False
             if self._heartbeat_thread:
