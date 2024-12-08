@@ -1,4 +1,4 @@
-# YADTQ-Yet-Another-Distributed-Task-Queue-
+# YADTQ-Yet-Another-Distributed-Task-Queue
 A distributed task queue implementation using Kafka as the message broker, featuring task deduplication, worker load balancing, and result caching.
 
 ## Features
